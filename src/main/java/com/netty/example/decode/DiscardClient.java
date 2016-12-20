@@ -1,0 +1,48 @@
+package com.netty.example.decode;
+
+import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.LineBasedFrameDecoder;
+import io.netty.handler.codec.string.StringDecoder;
+import io.netty.handler.codec.string.StringEncoder;
+
+/**
+ * Created by litao on 2016/12/14 0014.
+ */
+public class DiscardClient {
+    private static final int PORT = 8612;
+    private static final String HOST = "127.0.0.1";
+
+    public static void main(String[] args) throws Exception {
+        System.out.println(System.getProperty("line.separator").getBytes());
+        EventLoopGroup group = new NioEventLoopGroup();
+        try {
+            Bootstrap b = new Bootstrap();
+            b.group(group)
+                    .channel(NioSocketChannel.class)
+                    .handler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel ch) throws Exception {
+                            ChannelPipeline p = ch.pipeline();
+                            p.addLast(new StringDecoder());
+                            p.addLast(new StringEncoder());
+                            p.addLast(new DiscardClientHandler());
+                        }
+                    });
+
+            ChannelFuture f = b.connect(HOST, PORT).sync();
+            f.channel().writeAndFlush(Unpooled.copiedBuffer(("12345" + System.getProperty("line.separator")).getBytes()));
+
+            f.channel().closeFuture().sync();
+        } finally {
+            group.shutdownGracefully();
+        }
+    }
+}
